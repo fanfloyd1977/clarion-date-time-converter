@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clarion Date & Time Converter</title>
+<style>
+  :root {
+    /* Van Gogh light palette */
+    --bg:         #fdf6e3;        /* warm parchment */
+    --surface:    #fffcf2;        /* cream white */
+    --surface2:   #f5edd6;        /* soft wheat */
+    --border:     #d4b896;        /* warm sand */
+    --accent:     #2b5fa5;        /* Starry Night deep blue */
+    --accent2:    #1a3d6e;        /* darker night blue */
+    --gold:       #e8a820;        /* Van Gogh sunflower gold */
+    --gold2:      #c8850a;        /* deep gold */
+    --teal:       #3a7d6e;        /* cypress green */
+    --sky:        #5b8fc9;        /* starry sky blue */
+    --text:       #2c1f0e;        /* dark warm brown */
+    --muted:      #7a6045;        /* warm taupe */
+    --error:      #b83232;
+    --success:    #2d7a3a;
+    --shadow:     0 2px 8px rgba(44,31,14,0.08), 0 1px 3px rgba(44,31,14,0.05);
+    --shadow-md:  0 4px 16px rgba(44,31,14,0.1);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+    padding: 36px 16px;
+    /* subtle brushstroke texture via gradient */
+    background-image:
+      radial-gradient(ellipse 80% 40% at 10% 20%, rgba(91,143,201,0.08) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 90% 80%, rgba(232,168,32,0.07) 0%, transparent 60%),
+      radial-gradient(ellipse 40% 30% at 50% 50%, rgba(58,125,110,0.04) 0%, transparent 70%);
+  }
+
+  .wrap { max-width: 680px; margin: 0 auto; }
+
+  /* ── Header ── */
+  .header {
+    text-align: center;
+    margin-bottom: 28px;
+  }
+  .header-icon {
+    font-size: 38px;
+    display: block;
+    margin-bottom: 10px;
+    animation: sway 4s ease-in-out infinite;
+  }
+  @keyframes sway {
+    0%,100% { transform: rotate(-3deg); }
+    50%      { transform: rotate(3deg); }
+  }
+  .header h1 {
+    font-size: clamp(22px, 5vw, 30px);
+    font-weight: 800;
+    color: var(--accent2);
+    letter-spacing: -0.02em;
+    margin-bottom: 6px;
+  }
+  .header h1 em {
+    font-style: normal;
+    color: var(--gold2);
+  }
+  .header p {
+    font-size: 12.5px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+  .offline-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #eaf2ff;
+    border: 1px solid #b3cff0;
+    padding: 3px 12px;
+    border-radius: 100px;
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.08em;
+    margin-bottom: 12px;
+  }
+  .offline-badge span {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--success);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(45,122,58,.4); }
+    50%      { box-shadow: 0 0 0 5px rgba(45,122,58,0); }
+  }
+
+  /* ── Today bar ── */
+  .today-bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 11px 18px;
+    font-size: 12px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow);
+  }
+  .today-badge {
+    background: var(--gold);
+    color: #2c1f0e;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 2px 10px;
+    border-radius: 100px;
+    letter-spacing: 0.08em;
+  }
+  .today-val   { color: var(--accent2); font-weight: 700; }
+  .today-muted { color: var(--muted); }
+
+  /* ── Tabs ── */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 4px;
+    margin-bottom: 18px;
+    box-shadow: var(--shadow);
+  }
+  .tab {
+    flex: 1;
+    padding: 9px 8px;
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    border-radius: 9px;
+    transition: all 0.2s;
+    font-family: inherit;
+    white-space: nowrap;
+    letter-spacing: 0.01em;
+  }
+  .tab.active {
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(43,95,165,0.3);
+  }
+  .tab.active.gold-tab {
+    background: var(--gold);
+    color: #2c1f0e;
+    box-shadow: 0 2px 8px rgba(232,168,32,0.35);
+  }
+  .tab:hover:not(.active) {
+    background: var(--surface2);
+    color: var(--text);
+  }
+
+  /* ── Card ── */
+  .card {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    padding: 26px;
+    margin-bottom: 14px;
+    box-shadow: var(--shadow-md);
+    position: relative;
+    overflow: hidden;
+  }
+  /* subtle top accent stripe */
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--sky), var(--gold));
+    border-radius: 14px 14px 0 0;
+  }
+  .card-title {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-title::before {
+    content: '';
+    display: block;
+    width: 14px; height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--gold));
+    border-radius: 2px;
+  }
+
+  /* ── Fields ── */
+  .field { margin-bottom: 0; }
+  .field label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--muted);
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    margin-bottom: 7px;
+  }
+  .field input,
+  .field select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    color: var(--text);
+    font-size: 14px;
+    font-family: inherit;
+    padding: 11px 14px;
+    border-radius: 9px;
+    outline: none;
+    transition: border-color 0.18s, box-shadow 0.18s, background 0.18s;
+    -webkit-appearance: none;
+  }
+  .field input:focus,
+  .field select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(43,95,165,0.12);
+    background: #fff;
+  }
+  .field input::placeholder { color: #b8a88a; }
+
+  .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+
+  /* ── Buttons ── */
+  .btn-row { display: flex; gap: 8px; margin-top: 20px; }
+  .btn {
+    flex: 1;
+    padding: 11px;
+    border: none;
+    border-radius: 9px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.18s;
+    letter-spacing: 0.02em;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), var(--sky));
+    color: white;
+    box-shadow: 0 2px 8px rgba(43,95,165,0.2);
+  }
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 5px 14px rgba(43,95,165,0.3);
+  }
+  .btn-gold {
+    background: linear-gradient(135deg, var(--gold), var(--gold2));
+    color: #2c1f0e;
+    box-shadow: 0 2px 8px rgba(232,168,32,0.2);
+  }
+  .btn-gold:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 5px 14px rgba(232,168,32,0.35);
+  }
+  .btn-secondary {
+    background: var(--surface2);
+    color: var(--muted);
+    border: 1.5px solid var(--border);
+  }
+  .btn-secondary:hover {
+    color: var(--text);
+    border-color: var(--muted);
+    background: #ede3cc;
+  }
+
+  /* ── Results ── */
+  .result-section { margin-top: 22px; }
+  .result-label-row {
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    color: var(--teal);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  .result-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+    gap: 8px;
+  }
+  .result-item {
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    border-radius: 9px;
+    padding: 11px 13px;
+    transition: box-shadow 0.15s, transform 0.15s;
+    cursor: pointer;
+  }
+  .result-item:hover {
+    box-shadow: 0 3px 10px rgba(44,31,14,0.1);
+    transform: translateY(-1px);
+  }
+  .result-item.hi-blue {
+    background: #eaf2ff;
+    border-color: #b3cff0;
+  }
+  .result-item.hi-gold {
+    background: #fef9ec;
+    border-color: #f0d080;
+  }
+  .r-label {
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .r-value {
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--text);
+    word-break: break-all;
+  }
+  .result-item.hi-blue .r-value { color: var(--accent); }
+  .result-item.hi-gold .r-value { color: var(--gold2); }
+  .r-hint { font-size: 9px; color: #b8a88a; margin-top: 2px; }
+  .result-item.span-full {
+    grid-column: 1 / -1;
+  }
+  .result-item.span-full .r-value {
+    font-size: 18px;
+  }
+
+  /* ── Divider ── */
+  .r-divider {
+    grid-column: 1/-1;
+    border: none;
+    border-top: 1px dashed var(--border);
+    margin: 4px 0;
+  }
+
+  /* ── Banner ── */
+  .banner { padding:9px 13px; border-radius:8px; font-size:12px; margin-top:12px; display:none; }
+  .banner.error   { background:#fdf0f0; border:1.5px solid #e8b0b0; color:var(--error);   display:block; }
+  .banner.success { background:#f0fdf4; border:1.5px solid #a8d8b0; color:var(--success); display:block; }
+
+  /* ── Info box ── */
+  .info-box {
+    background: #eaf2ff;
+    border: 1.5px solid #b3cff0;
+    border-radius: 9px;
+    padding: 12px 15px;
+    font-size: 12px;
+    color: var(--accent2);
+    line-height: 1.75;
+    margin-bottom: 18px;
+  }
+  .info-box strong { color: var(--accent); }
+
+  /* ── Reference table ── */
+  .ref-table { width:100%; border-collapse:collapse; font-size:12px; }
+  .ref-table th {
+    background: var(--surface2);
+    color: var(--muted);
+    padding: 8px 10px;
+    text-align: left;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 800;
+    border-bottom: 1.5px solid var(--border);
+  }
+  .ref-table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+  .ref-table tr:last-child td { border-bottom: none; }
+  .ref-table tr:hover td { background: var(--surface2); }
+  .mono { font-family:'Consolas','Courier New',monospace; color:var(--accent); font-weight:700; cursor:pointer; }
+
+  /* ── Code block ── */
+  .code-block {
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    border-radius: 9px;
+    padding: 14px 16px;
+    font-family: 'Consolas','Courier New', monospace;
+    font-size: 12px;
+    color: var(--accent2);
+    line-height: 2.1;
+  }
+  .code-block .cm { color: var(--muted); font-style: italic; }
+
+  /* ── Section ── */
+  .section { display:none; }
+  .section.active { display:block; }
+
+  /* ── Copy toast ── */
+  .copied-msg {
+    position: fixed;
+    bottom: 24px; right: 24px;
+    background: var(--teal);
+    color: white;
+    padding: 8px 18px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: all 0.25s;
+    pointer-events: none;
+    z-index: 999;
+    box-shadow: 0 4px 12px rgba(58,125,110,0.3);
+  }
+  .copied-msg.show { opacity:1; transform:translateY(0); }
+
+  /* ── Footer ── */
+  .footer {
+    text-align: center;
+    margin-top: 28px;
+    font-size: 11px;
+    color: #b8a88a;
+    line-height: 2;
+  }
+
+  @media(max-width:520px) {
+    .row3 { grid-template-columns:1fr; }
+    .result-grid { grid-template-columns:1fr 1fr; }
+    .tab { font-size:11px; padding:8px 4px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Header -->
+  <div class="header">
+    <span class="header-icon">🌻</span>
+    <div class="offline-badge"><span></span> OFFLINE · NO INTERNET NEEDED</div>
+    <h1>Clarion <em>Date & Time</em> Converter</h1>
+    <p>Convert between Clarion serial numbers and standard dates &amp; times.<br>
+       Save this file to your PC — works completely offline.</p>
+  </div>
+
+  <!-- Today bar -->
+  <div class="today-bar">
+    <span class="today-badge">TODAY</span>
+    <span class="today-muted">Standard:</span>
+    <span class="today-val" id="today-std"></span>
+    <span class="today-muted">Clarion Date:</span>
+    <span class="today-val" id="today-clarion"></span>
+    <span class="today-muted">Clarion Time:</span>
+    <span class="today-val" id="today-time"></span>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active"    onclick="switchTab('s2c')">📅 Standard → Clarion</button>
+    <button class="tab"           onclick="switchTab('c2s')">📆 Clarion → Standard</button>
+    <button class="tab gold-tab"  onclick="switchTab('time')">⏰ Time Converter</button>
+    <button class="tab"           onclick="switchTab('ref')">📖 Reference</button>
+  </div>
+
+  <!-- ══ TAB 1: Standard → Clarion ══ -->
+  <div class="section active" id="tab-s2c">
+    <div class="card">
+      <div class="card-title">Standard Date → Clarion Number</div>
+
+      <div class="row3">
+        <div class="field">
+          <label>Year</label>
+          <input type="number" id="s2c-year" placeholder="e.g. 2026"
+                 min="1801" max="9999" oninput="convertS2C()">
+        </div>
+        <div class="field">
+          <label>Month</label>
+          <select id="s2c-month" onchange="convertS2C()">
+            <option value="">— Month —</option>
+            <option value="1">January</option>
+            <option value="2">February</option>
+            <option value="3">March</option>
+            <option value="4">April</option>
+            <option value="5">May</option>
+            <option value="6">June</option>
+            <option value="7">July</option>
+            <option value="8">August</option>
+            <option value="9">September</option>
+            <option value="10">October</option>
+            <option value="11">November</option>
+            <option value="12">December</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Day</label>
+          <input type="number" id="s2c-day" placeholder="e.g. 4"
+                 min="1" max="31" oninput="convertS2C()">
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary"   onclick="convertS2C()">▶ Convert</button>
+        <button class="btn btn-gold"      onclick="useTodayS2C()">🌻 Today</button>
+        <button class="btn btn-secondary" onclick="clearS2C()">✕ Clear</button>
+      </div>
+
+      <div id="s2c-error" class="banner"></div>
+
+      <div id="s2c-results" style="display:none;">
+        <div class="result-section">
+          <div class="result-label-row">Results — click any value to copy</div>
+          <div class="result-grid" id="s2c-grid"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ TAB 2: Clarion → Standard ══ -->
+  <div class="section" id="tab-c2s">
+    <div class="card">
+      <div class="card-title">Clarion Number → Standard Date / Time</div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+        <div class="field">
+          <label>Clarion Date Number</label>
+          <input type="number" id="c2s-date" placeholder="e.g. 82341"
+                 min="4" max="2994626" oninput="convertC2S()">
+        </div>
+        <div class="field">
+          <label>Clarion Time Number
+            <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:10px;">(optional)</span>
+          </label>
+          <input type="number" id="c2s-time" placeholder="e.g. 2904601"
+                 min="0" max="8640000" oninput="convertC2S()">
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary"   onclick="convertC2S()">▶ Convert</button>
+        <button class="btn btn-gold"      onclick="useTodayC2S()">🌻 Today / Now</button>
+        <button class="btn btn-secondary" onclick="clearC2S()">✕ Clear</button>
+      </div>
+
+      <div id="c2s-error" class="banner"></div>
+
+      <div id="c2s-results" style="display:none;">
+        <div class="result-section">
+          <div class="result-label-row">Results — click any value to copy</div>
+          <div class="result-grid" id="c2s-grid"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ TAB 3: Time Converter ══ -->
+  <div class="section" id="tab-time">
+    <div class="card">
+      <div class="card-title">Clarion Time ↔ Standard Time</div>
+
+      <div class="info-box">
+        <strong>Clarion Time</strong> = centiseconds (1/100s) since midnight &nbsp;·&nbsp;
+        Range: <strong>0</strong> to <strong>8,640,000</strong><br>
+        Formula: <strong>(H × 360,000) + (M × 6,000) + (S × 100)</strong>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+
+        <!-- Left: Clarion → Standard -->
+        <div>
+          <div style="font-size:11px; font-weight:800; color:var(--accent);
+                      text-transform:uppercase; letter-spacing:0.1em; margin-bottom:12px;">
+            Clarion → Standard
+          </div>
+          <div class="field">
+            <label>Clarion Time Number</label>
+            <input type="number" id="ct-in" placeholder="e.g. 2904601"
+                   min="0" max="8640000" oninput="convCT()">
+          </div>
+          <div id="ct-out" style="display:none; margin-top:10px;">
+            <div class="result-grid" id="ct-grid"
+                 style="grid-template-columns:1fr 1fr;"></div>
+          </div>
+        </div>
+
+        <!-- Right: Standard → Clarion -->
+        <div>
+          <div style="font-size:11px; font-weight:800; color:var(--gold2);
+                      text-transform:uppercase; letter-spacing:0.1em; margin-bottom:12px;">
+            Standard → Clarion
+          </div>
+          <div class="row3" style="gap:8px;">
+            <div class="field">
+              <label>Hour</label>
+              <input type="number" id="st-h" placeholder="H" min="0" max="23" oninput="convST()">
+            </div>
+            <div class="field">
+              <label>Min</label>
+              <input type="number" id="st-m" placeholder="M" min="0" max="59" oninput="convST()">
+            </div>
+            <div class="field">
+              <label>Sec</label>
+              <input type="number" id="st-s" placeholder="S" min="0" max="59" oninput="convST()">
+            </div>
+          </div>
+          <div id="st-out" style="display:none; margin-top:10px;">
+            <div class="result-grid" id="st-grid"
+                 style="grid-template-columns:1fr 1fr;"></div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="btn-row" style="margin-top:18px;">
+        <button class="btn btn-gold" onclick="useNowTime()">🌻 Use Current Time</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ TAB 3: Reference ══ -->
+  <div class="section" id="tab-ref">
+
+    <div class="card">
+      <div class="card-title">Quick Reference Dates</div>
+      <div class="info-box">
+        <strong>Epoch:</strong> December 28, 1800 (Day 0) &nbsp;·&nbsp;
+        <strong>First valid:</strong> January 1, 1801 (Day 4)<br>
+        <strong>Day of week:</strong> ClarionDate MOD 7 → 0 = Sunday … 6 = Saturday
+      </div>
+      <table class="ref-table" id="ref-table"></table>
+    </div>
+
+    <div class="card">
+      <div class="card-title">SQL Server Formulas</div>
+      <div class="code-block">
+        <span class="cm">-- Clarion date → standard date:</span><br>
+        DATEADD(DAY, ClarionDate, '1800-12-28')<br><br>
+        <span class="cm">-- Standard date → Clarion:</span><br>
+        DATEDIFF(DAY, '1800-12-28', YourDateColumn)<br><br>
+        <span class="cm">-- With time combined:</span><br>
+        DATEADD(MILLISECOND, (ClarionTime-1)*10,<br>
+        &nbsp;&nbsp;DATEADD(DAY, ClarionDate, '1800-12-28'))
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Excel Formulas</div>
+      <div class="code-block">
+        <span class="cm">-- Clarion → Excel date (format cell as Date):</span><br>
+        = A1 - 36161<br><br>
+        <span class="cm">-- Excel date → Clarion:</span><br>
+        = A1 + 36161
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footer">
+    🌻 &nbsp;Clarion epoch: December 28, 1800 &nbsp;·&nbsp;
+    Time: centiseconds since midnight &nbsp;·&nbsp;
+    100% offline &nbsp;·&nbsp; Van Gogh theme
+  </div>
+
+</div>
+
+<div class="copied-msg" id="copied-msg">✓ Copied!</div>
+
+<script>
+// ── Core ───────────────────────────────────────────────────────────────────
+const EPOCH = new Date(1800, 11, 28);
+
+function d2c(d) {
+  return Math.round((new Date(d.getFullYear(),d.getMonth(),d.getDate()) - EPOCH) / 86400000);
+}
+function c2d(n) {
+  const d = new Date(EPOCH); d.setDate(d.getDate() + +n); return d;
+}
+function ct2hms(ct) {
+  const c=+ct;
+  return { h:Math.floor(c/360000), m:Math.floor((c%360000)/6000),
+           s:Math.floor((c%6000)/100), cs:c%100 };
+}
+function hms2ct(h,m,s,cs=0){ return h*360000+m*6000+s*100+cs; }
+
+const DAYS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const MON =['January','February','March','April','May','June',
+            'July','August','September','October','November','December'];
+const MONS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function pad(n,w=2){return String(n).padStart(w,'0');}
+function fmtDate(d){return `${DAYS[d.getDay()]}, ${MON[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;}
+function fmt12(h,m,s){const ap=h>=12?'PM':'AM'; return `${pad(h%12||12)}:${pad(m)}:${pad(s)} ${ap}`;}
+function doy(d){return Math.floor((d-new Date(d.getFullYear(),0,0))/86400000);}
+function wkn(d){const j=new Date(d.getFullYear(),0,1);return Math.ceil((((d-j)/86400000)+j.getDay()+1)/7);}
+
+// ── Today bar ──────────────────────────────────────────────────────────────
+function tick(){
+  const n=new Date();
+  document.getElementById('today-std').textContent=
+    `${n.getFullYear()}-${pad(n.getMonth()+1)}-${pad(n.getDate())}`;
+  document.getElementById('today-clarion').textContent=d2c(n).toLocaleString();
+  document.getElementById('today-time').textContent=
+    hms2ct(n.getHours(),n.getMinutes(),n.getSeconds()).toLocaleString();
+}
+tick(); setInterval(tick,1000);
+
+// ── Tabs ───────────────────────────────────────────────────────────────────
+function switchTab(id){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  const order=['s2c','c2s','time','ref'];
+  document.querySelectorAll('.tab')[order.indexOf(id)].classList.add('active');
+  if(id==='ref') buildRef();
+}
+
+// ── Result builders ────────────────────────────────────────────────────────
+function ri(label,val,cls=''){
+  return `<div class="result-item ${cls}" onclick="cp('${val}')">
+    <div class="r-label">${label}</div>
+    <div class="r-value">${val}</div>
+    <div class="r-hint">click to copy</div>
+  </div>`;
+}
+function cp(v){
+  navigator.clipboard.writeText(v).catch(()=>{
+    const t=document.createElement('textarea');
+    t.value=v;document.body.appendChild(t);t.select();
+    document.execCommand('copy');document.body.removeChild(t);
+  });
+  const m=document.getElementById('copied-msg');
+  m.classList.add('show');setTimeout(()=>m.classList.remove('show'),1800);
+}
+function err(id,msg){
+  const e=document.getElementById(id);
+  e.textContent='⚠️ '+msg; e.className='banner error';
+}
+function clrErr(id){
+  const e=document.getElementById(id);
+  e.className='banner'; e.textContent='';
+}
+
+// ── Standard → Clarion ────────────────────────────────────────────────────
+function convertS2C(){
+  clrErr('s2c-error');
+  const y=+document.getElementById('s2c-year').value;
+  const mo=+document.getElementById('s2c-month').value;
+  const dy=+document.getElementById('s2c-day').value;
+
+  if(!y||!mo||!dy){
+    document.getElementById('s2c-results').style.display='none'; return;
+  }
+  if(y<1801||y>9999){
+    err('s2c-error','Year must be between 1801 and 9999');
+    document.getElementById('s2c-results').style.display='none'; return;
+  }
+  const date=new Date(y,mo-1,dy);
+  if(date.getMonth()!==mo-1){
+    err('s2c-error','Invalid date — day is out of range for this month');
+    document.getElementById('s2c-results').style.display='none'; return;
+  }
+
+  const cd=d2c(date);
+  const today=d2c(new Date());
+  const diff=cd-today;
+  const diffLabel=diff===0?'Today':diff>0?`+${diff} days from today`:`${diff} days from today`;
+
+  const items=[
+    ri('Clarion Date Number', cd.toLocaleString(), 'hi-blue'),
+    ri('SQL Formula', `DATEADD(DAY,${cd},'1800-12-28')`),
+  ];
+
+  document.getElementById('s2c-grid').innerHTML=items.join('');
+  document.getElementById('s2c-results').style.display='block';
+}
+
+function clearS2C(){
+  ['s2c-year','s2c-day'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('s2c-month').selectedIndex=0;
+  document.getElementById('s2c-results').style.display='none';
+  clrErr('s2c-error');
+}
+function useTodayS2C(){
+  const n=new Date();
+  document.getElementById('s2c-year').value=n.getFullYear();
+  document.getElementById('s2c-month').value=n.getMonth()+1;
+  document.getElementById('s2c-day').value=n.getDate();
+  convertS2C();
+}
+
+// ── Clarion → Standard ────────────────────────────────────────────────────
+function convertC2S(){
+  clrErr('c2s-error');
+  const cnVal=document.getElementById('c2s-date').value;
+  const ctVal=document.getElementById('c2s-time').value;
+  if(!cnVal){
+    document.getElementById('c2s-results').style.display='none'; return;
+  }
+  const cn=+cnVal;
+  if(cn<4||cn>2994626){
+    err('c2s-error','Clarion date must be between 4 (Jan 1, 1801) and 2,994,626 (Dec 31, 9999)');
+    document.getElementById('c2s-results').style.display='none'; return;
+  }
+  const date=c2d(cn);
+  const y=date.getFullYear(), mo=date.getMonth(), dy=date.getDate();
+  const items=[
+    ri('Standard Date', fmtDate(date), 'span-full'),
+    ri('ISO Format', `${y}-${pad(mo+1)}-${pad(dy)}`),
+    ri('Day of Week', DAYS[date.getDay()], 'hi-gold'),
+    ri('Clarion Date Number', cn.toLocaleString(), 'hi-blue'),
+  ];
+  if(ctVal!==''){
+    const ct=+ctVal;
+    if(ct>=0&&ct<=8640000){
+      const {h,m,s}=ct2hms(ct);
+      items.push(
+        ri('Clarion Time', ct.toLocaleString(), 'hi-blue'),
+        ri('Standard Time', `${pad(h)}:${pad(m)}:${pad(s)}`),
+        ri('12-Hour', fmt12(h,m,s)),
+      );
+    }
+  }
+  document.getElementById('c2s-grid').innerHTML=items.join('');
+  document.getElementById('c2s-results').style.display='block';
+}
+function clearC2S(){
+  document.getElementById('c2s-date').value='';
+  document.getElementById('c2s-time').value='';
+  document.getElementById('c2s-results').style.display='none';
+  clrErr('c2s-error');
+}
+function useTodayC2S(){
+  const n=new Date();
+  document.getElementById('c2s-date').value=d2c(n);
+  document.getElementById('c2s-time').value=hms2ct(n.getHours(),n.getMinutes(),n.getSeconds());
+  convertC2S();
+}
+
+// ── Time converter ─────────────────────────────────────────────────────────
+function convCT(){
+  const ct=+document.getElementById('ct-in').value;
+  if(isNaN(ct)||ct<0||ct>8640000){
+    document.getElementById('ct-out').style.display='none'; return;
+  }
+  const {h,m,s,cs}=ct2hms(ct);
+  document.getElementById('ct-grid').innerHTML=[
+    ri('Clarion Time', ct.toLocaleString(), 'hi-blue'),
+    ri('Standard Time', `${pad(h)}:${pad(m)}:${pad(s)}`),
+    ri('12-Hour', fmt12(h,m,s)),
+    ri('Centiseconds', cs.toString()),
+  ].join('');
+  document.getElementById('ct-out').style.display='block';
+}
+
+function convST(){
+  const h=+document.getElementById('st-h').value||0;
+  const m=+document.getElementById('st-m').value||0;
+  const s=+document.getElementById('st-s').value||0;
+  if(!document.getElementById('st-h').value&&
+     !document.getElementById('st-m').value&&
+     !document.getElementById('st-s').value){
+    document.getElementById('st-out').style.display='none'; return;
+  }
+  const ct=hms2ct(h,m,s);
+  document.getElementById('st-grid').innerHTML=[
+    ri('Clarion Time', ct.toLocaleString(), 'hi-gold'),
+    ri('Standard', `${pad(h)}:${pad(m)}:${pad(s)}`),
+    ri('12-Hour', fmt12(h,m,s)),
+    ri('Total Seconds', (h*3600+m*60+s).toString()),
+  ].join('');
+  document.getElementById('st-out').style.display='block';
+}
+
+function useNowTime(){
+  const n=new Date();
+  document.getElementById('st-h').value=n.getHours();
+  document.getElementById('st-m').value=n.getMinutes();
+  document.getElementById('st-s').value=n.getSeconds();
+  convST();
+  document.getElementById('ct-in').value=hms2ct(n.getHours(),n.getMinutes(),n.getSeconds());
+  convCT();
+}
+
+// ── Reference ──────────────────────────────────────────────────────────────
+function buildRef(){
+  const rows=[
+    {label:'Epoch (Day 0)',  date:'Dec 28, 1800', cn:0},
+    {label:'First valid',   date:'Jan 1, 1801',  cn:4},
+    {label:'Jan 1, 1900',   date:'Jan 1, 1900',  cn:d2c(new Date(1900,0,1))},
+    {label:'Jan 1, 1980',   date:'Jan 1, 1980',  cn:d2c(new Date(1980,0,1))},
+    {label:'Jan 1, 2000',   date:'Jan 1, 2000',  cn:d2c(new Date(2000,0,1))},
+    {label:'Jan 1, 2020',   date:'Jan 1, 2020',  cn:d2c(new Date(2020,0,1))},
+    {label:'Today',         date:(()=>{const n=new Date();return `${MONS[n.getMonth()]} ${n.getDate()}, ${n.getFullYear()}`})(),
+                            cn:d2c(new Date())},
+    {label:'Jan 1, 2030',   date:'Jan 1, 2030',  cn:d2c(new Date(2030,0,1))},
+    {label:'Dec 31, 9999',  date:'Dec 31, 9999', cn:2994626},
+  ];
+  document.getElementById('ref-table').innerHTML=
+    `<tr><th>Description</th><th>Standard Date</th><th>Clarion #</th><th>Day of Week</th></tr>`+
+    rows.map(r=>{
+      const dow=r.cn>0?DAYS[c2d(r.cn).getDay()]:'—';
+      return `<tr>
+        <td>${r.label}</td>
+        <td>${r.date}</td>
+        <td class="mono" onclick="cp('${r.cn}')" title="click to copy">${r.cn.toLocaleString()}</td>
+        <td>${dow}</td>
+      </tr>`;
+    }).join('');
+}
+</script>
+</body>
+</html>
