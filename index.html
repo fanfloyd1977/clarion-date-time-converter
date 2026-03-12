@@ -479,15 +479,19 @@
     <div class="card">
       <div class="card-title">Standard Date → Clarion Number</div>
 
+      <div class="field" style="margin-bottom:14px;">
+        <label>Date (pick from calendar)</label>
+        <input type="date" id="s2c-picker" onchange="pickS2C()" min="1801-01-01" max="9999-12-31">
+      </div>
       <div class="row3">
         <div class="field">
           <label>Year</label>
           <input type="number" id="s2c-year" placeholder="e.g. 2026"
-                 min="1801" max="9999" oninput="convertS2C()">
+                 min="1801" max="9999" oninput="syncS2CFields('manual')">
         </div>
         <div class="field">
           <label>Month</label>
-          <select id="s2c-month" onchange="convertS2C()">
+          <select id="s2c-month" onchange="syncS2CFields('manual')">
             <option value="">— Month —</option>
             <option value="1">January</option>
             <option value="2">February</option>
@@ -506,7 +510,7 @@
         <div class="field">
           <label>Day</label>
           <input type="number" id="s2c-day" placeholder="e.g. 4"
-                 min="1" max="31" oninput="convertS2C()">
+                 min="1" max="31" oninput="syncS2CFields('manual')">
         </div>
       </div>
 
@@ -777,17 +781,36 @@ function convertS2C(){
   const diffLabel=diff===0?'Today':diff>0?`+${diff} days from today`:`${diff} days from today`;
 
   const items=[
-    ri('Clarion Date Number', cd.toLocaleString(), 'hi-blue'),
-    ri('SQL Formula', `DATEADD(DAY,${cd},'1800-12-28')`),
+    ri('Clarion Date Number', String(cd), 'hi-blue'),
   ];
 
   document.getElementById('s2c-grid').innerHTML=items.join('');
   document.getElementById('s2c-results').style.display='block';
 }
 
+function pickS2C(){
+  const v=document.getElementById('s2c-picker').value; // "YYYY-MM-DD"
+  if(!v) return;
+  const [y,mo,dy]=v.split('-').map(Number);
+  document.getElementById('s2c-year').value=y;
+  document.getElementById('s2c-month').value=mo;
+  document.getElementById('s2c-day').value=dy;
+  convertS2C();
+}
+function syncS2CFields(src){
+  const y=document.getElementById('s2c-year').value;
+  const mo=document.getElementById('s2c-month').value;
+  const dy=document.getElementById('s2c-day').value;
+  if(y&&mo&&dy){
+    document.getElementById('s2c-picker').value=
+      `${String(y).padStart(4,'0')}-${pad(mo)}-${pad(dy)}`;
+  }
+  convertS2C();
+}
 function clearS2C(){
   ['s2c-year','s2c-day'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('s2c-month').selectedIndex=0;
+  document.getElementById('s2c-picker').value='';
   document.getElementById('s2c-results').style.display='none';
   clrErr('s2c-error');
 }
@@ -796,6 +819,8 @@ function useTodayS2C(){
   document.getElementById('s2c-year').value=n.getFullYear();
   document.getElementById('s2c-month').value=n.getMonth()+1;
   document.getElementById('s2c-day').value=n.getDate();
+  document.getElementById('s2c-picker').value=
+    `${n.getFullYear()}-${pad(n.getMonth()+1)}-${pad(n.getDate())}`;
   convertS2C();
 }
 
@@ -816,16 +841,13 @@ function convertC2S(){
   const y=date.getFullYear(), mo=date.getMonth(), dy=date.getDate();
   const items=[
     ri('Standard Date', fmtDate(date), 'span-full'),
-    ri('ISO Format', `${y}-${pad(mo+1)}-${pad(dy)}`),
     ri('Day of Week', DAYS[date.getDay()], 'hi-gold'),
-    ri('Clarion Date Number', cn.toLocaleString(), 'hi-blue'),
   ];
   if(ctVal!==''){
     const ct=+ctVal;
     if(ct>=0&&ct<=8640000){
       const {h,m,s}=ct2hms(ct);
       items.push(
-        ri('Clarion Time', ct.toLocaleString(), 'hi-blue'),
         ri('Standard Time', `${pad(h)}:${pad(m)}:${pad(s)}`),
         ri('12-Hour', fmt12(h,m,s)),
       );
