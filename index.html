@@ -464,6 +464,8 @@
     <span class="today-val" id="today-clarion"></span>
     <span class="today-muted">Clarion Time:</span>
     <span class="today-val" id="today-time"></span>
+    <span class="today-muted">Julian:</span>
+    <span class="today-val" id="today-julian"></span>
   </div>
 
   <!-- Tabs -->
@@ -471,6 +473,7 @@
     <button class="tab active"    onclick="switchTab('s2c')">📅 Standard → Clarion</button>
     <button class="tab"           onclick="switchTab('c2s')">📆 Clarion → Standard</button>
     <button class="tab gold-tab"  onclick="switchTab('time')">⏰ Time Converter</button>
+    <button class="tab"           onclick="switchTab('julian')">🗓️ Julian</button>
     <button class="tab"           onclick="switchTab('ref')">📖 Reference</button>
   </div>
 
@@ -632,6 +635,60 @@
     </div>
   </div>
 
+  <!-- ══ TAB 4: Julian Date Converter ══ -->
+  <div class="section" id="tab-julian">
+    <div class="card">
+      <div class="card-title">Julian Date Converter</div>
+
+      <div class="info-box">
+        <strong>Julian Date</strong> (ordinal date) = day of year (1–366), prefixed with the year.<br>
+        Format: <strong>YYYYDDD</strong> &nbsp;·&nbsp; e.g. March 19, 2026 = <strong>2026078</strong>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+
+        <!-- Left: Standard → Julian -->
+        <div>
+          <div style="font-size:11px; font-weight:800; color:var(--accent);
+                      text-transform:uppercase; letter-spacing:0.1em; margin-bottom:12px;">
+            Standard → Julian
+          </div>
+          <div class="field" style="margin-bottom:12px;">
+            <label>Pick a Date</label>
+            <input type="date" id="sj-picker" onchange="pickSJ()" min="1800-01-01" max="9999-12-31">
+          </div>
+          <div id="sj-out" style="display:none; margin-top:10px;">
+            <div class="result-grid" id="sj-grid" style="grid-template-columns:1fr 1fr;"></div>
+          </div>
+          <div style="margin-top:10px;">
+            <button class="btn btn-gold" style="width:100%;" onclick="useTodaySJ()">🌻 Today</button>
+          </div>
+        </div>
+
+        <!-- Right: Julian → Standard -->
+        <div>
+          <div style="font-size:11px; font-weight:800; color:var(--gold2);
+                      text-transform:uppercase; letter-spacing:0.1em; margin-bottom:12px;">
+            Julian → Standard
+          </div>
+          <div class="field" style="margin-bottom:12px;">
+            <label>Julian Date Number</label>
+            <input type="number" id="js-in" placeholder="e.g. 2026078 or 78"
+                   oninput="convertJS()">
+          </div>
+          <div id="js-error" class="banner"></div>
+          <div id="js-out" style="display:none; margin-top:10px;">
+            <div class="result-grid" id="js-grid" style="grid-template-columns:1fr 1fr;"></div>
+          </div>
+          <div style="margin-top:10px;">
+            <button class="btn btn-gold" style="width:100%;" onclick="useTodayJS()">🌻 Today</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
   <!-- ══ TAB 3: Reference ══ -->
   <div class="section" id="tab-ref">
 
@@ -709,6 +766,8 @@ function doy(d){return Math.floor((d-new Date(d.getFullYear(),0,0))/86400000);}
 function wkn(d){const j=new Date(d.getFullYear(),0,1);return Math.ceil((((d-j)/86400000)+j.getDay()+1)/7);}
 
 // ── Today bar ──────────────────────────────────────────────────────────────
+function isLeap(y){ return (y%4===0 && y%100!==0) || y%400===0; }
+
 function tick(){
   const n=new Date();
   document.getElementById('today-std').textContent=
@@ -716,6 +775,8 @@ function tick(){
   document.getElementById('today-clarion').textContent=d2c(n).toLocaleString();
   document.getElementById('today-time').textContent=
     hms2ct(n.getHours(),n.getMinutes(),n.getSeconds()).toLocaleString();
+  document.getElementById('today-julian').textContent=
+    doy(n) + (isLeap(n.getFullYear()) ? ' 🐸' : '');
 }
 tick(); setInterval(tick,1000);
 
@@ -724,7 +785,7 @@ function switchTab(id){
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('tab-'+id).classList.add('active');
-  const order=['s2c','c2s','time','ref'];
+  const order=['s2c','c2s','time','julian','ref'];
   document.querySelectorAll('.tab')[order.indexOf(id)].classList.add('active');
   if(id==='ref') buildRef();
 }
@@ -782,6 +843,7 @@ function convertS2C(){
 
   const items=[
     ri('Clarion Date Number', String(cd), 'hi-blue'),
+    ri('Leap Year', isLeap(y) ? '🐸 Yes' : 'No', isLeap(y) ? 'hi-gold' : ''),
   ];
 
   document.getElementById('s2c-grid').innerHTML=items.join('');
@@ -842,6 +904,7 @@ function convertC2S(){
   const items=[
     ri('Standard Date', fmtDate(date), 'span-full'),
     ri('Day of Week', DAYS[date.getDay()], 'hi-gold'),
+    ri('Leap Year', isLeap(y) ? '🐸 Yes' : 'No', isLeap(y) ? 'hi-gold' : ''),
   ];
   if(ctVal!==''){
     const ct=+ctVal;
@@ -912,6 +975,75 @@ function useNowTime(){
   convST();
   document.getElementById('ct-in').value=hms2ct(n.getHours(),n.getMinutes(),n.getSeconds());
   convCT();
+}
+
+// ── Julian Date ────────────────────────────────────────────────────────────
+function toJulian(d){
+  return d.getFullYear() + pad(doy(d), 3);
+}
+function fromJulian(s){
+  const str = String(s).trim().replace(/\D/g,'');
+  if(!str) return null;
+  let yr, doyN;
+  if(str.length >= 6){
+    yr   = +str.slice(0, 4);
+    doyN = +str.slice(4);
+  } else {
+    yr   = new Date().getFullYear();
+    doyN = +str;
+  }
+  if(!yr || !doyN || doyN < 1 || doyN > 366) return null;
+  return new Date(yr, 0, doyN);   // JS handles day overflow → correct date
+}
+
+function pickSJ(){
+  const v = document.getElementById('sj-picker').value;
+  if(!v){ document.getElementById('sj-out').style.display='none'; return; }
+  const [y,mo,dy] = v.split('-').map(Number);
+  const d = new Date(y, mo-1, dy);
+  const jd = toJulian(d);
+  const dyN = doy(d);
+  document.getElementById('sj-grid').innerHTML = [
+    ri('Julian Date', jd, 'hi-blue'),
+    ri('Day of Year', String(dyN)),
+    ri('Clarion Date', String(d2c(d))),
+    ri('Leap Year', isLeap(y) ? '🐸 Yes' : 'No', isLeap(y) ? 'hi-gold' : ''),
+    ri('Standard Date', fmtDate(d), 'span-full'),
+  ].join('');
+  document.getElementById('sj-out').style.display = 'block';
+}
+
+function useTodaySJ(){
+  const n = new Date();
+  document.getElementById('sj-picker').value =
+    `${n.getFullYear()}-${pad(n.getMonth()+1)}-${pad(n.getDate())}`;
+  pickSJ();
+}
+
+function convertJS(){
+  clrErr('js-error');
+  const val = document.getElementById('js-in').value;
+  if(!val){ document.getElementById('js-out').style.display='none'; return; }
+  const d = fromJulian(val);
+  if(!d || isNaN(d.getTime())){
+    err('js-error','Invalid Julian date — enter YYYYDDD (e.g. 2026078) or day-of-year (e.g. 78)');
+    document.getElementById('js-out').style.display='none'; return;
+  }
+  document.getElementById('js-grid').innerHTML = [
+    ri('Standard Date', fmtDate(d), 'span-full'),
+    ri('Julian Date', toJulian(d), 'hi-blue'),
+    ri('Day of Year', String(doy(d))),
+    ri('Clarion Date', String(d2c(d))),
+    ri('Day of Week', DAYS[d.getDay()], 'hi-gold'),
+    ri('Leap Year', isLeap(d.getFullYear()) ? '🐸 Yes' : 'No', isLeap(d.getFullYear()) ? 'hi-gold' : ''),
+  ].join('');
+  document.getElementById('js-out').style.display = 'block';
+}
+
+function useTodayJS(){
+  const n = new Date();
+  document.getElementById('js-in').value = toJulian(n);
+  convertJS();
 }
 
 // ── Reference ──────────────────────────────────────────────────────────────
